@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-zenith-dark text-zenith-offwhite;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  
+  h1, h2, h3, .font-cinzel {
+    font-family: 'Cinzel', serif;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #101513;
+}
+::-webkit-scrollbar-thumb {
+  background: #1b3b32;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #e68a45;
+}
+
+/* Glassmorphism */
+.glass-panel {
+  background: rgba(20, 44, 37, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(214, 209, 197, 0.12);
+}
+
+.glass-nav {
+  background: rgba(16, 21, 19, 0.85);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(214, 209, 197, 0.1);
+}

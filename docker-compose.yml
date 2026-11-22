@@ -1,0 +1,193 @@
+services:
+  # ----------------------------------------------------
+  # 1. API Gateway (Reverse Proxy)
+  # ----------------------------------------------------
+  nginx:
+    image: nginx:alpine
+    container_name: zenith-gateway
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - frontend
+      - product-service
+      - tour-service
+      - order-service
+    networks:
+      - zenith-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/gateway-health || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  # ----------------------------------------------------
+  # 2. Frontend React Application
+  # ----------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zenith-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - zenith-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/health || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  # ----------------------------------------------------
+  # 3. Product Microservice
+  # ----------------------------------------------------
+  product-service:
+    build:
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    container_name: zenith-product-service
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+      - SERVICE_NAME=product-service
+    networks:
+      - zenith-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  # ----------------------------------------------------
+  # 4. Tour Microservice
+  # ----------------------------------------------------
+  tour-service:
+    build:
+      context: ./services/tour-service
+      dockerfile: Dockerfile
+    container_name: zenith-tour-service
+    restart: unless-stopped
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+      - SERVICE_NAME=tour-service
+    networks:
+      - zenith-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  # ----------------------------------------------------
+  # 5. Order Microservice
+  # ----------------------------------------------------
+  order-service:
+    build:
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: zenith-order-service
+    restart: unless-stopped
+    ports:
+      - "8003:8003"
+    environment:
+      - PORT=8003
+      - SERVICE_NAME=order-service
+      - DATABASE_URL=postgresql://zenith:zenith_dev_pass_2026@postgres:5432/zenith_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - zenith-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  # ----------------------------------------------------
+  # 6. Relational Database (PostgreSQL)
+  # ----------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: zenith-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: zenith
+      POSTGRES_PASSWORD: zenith_dev_pass_2026
+      POSTGRES_DB: zenith_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - zenith-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zenith -d zenith_db"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ----------------------------------------------------
+  # 7. Metrics Collection (Prometheus)
+  # ----------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: zenith-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - zenith-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/healthy || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+
+  # ----------------------------------------------------
+  # 8. Metrics Visualization (Grafana)
+  # ----------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: zenith-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - zenith-network
+
+# ----------------------------------------------------
+# Networks & Persistent Volumes
+# ----------------------------------------------------
+networks:
+  zenith-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local

@@ -1,0 +1,29 @@
+# Prometheus configuration for ZENITH Microservices
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'zenith-product-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['product-service:8001']
+        labels:
+          service: 'product-service'
+          environment: 'production'
+
+  - job_name: 'zenith-tour-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['tour-service:8002']
+        labels:
+          service: 'tour-service'
+          environment: 'production'
+
+  - job_name: 'zenith-order-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['order-service:8003']
+        labels:
+          service: 'order-service'
+          environment: 'production'

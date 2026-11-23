@@ -317,7 +317,7 @@ export default function CartDrawer() {
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-zenith-stone/50">
                 <ShieldCheck className="w-3.5 h-3.5 text-zenith-accent" />
-                <span>Microservice Order Dispatch via Port 8003</span>
+                <span>Secure checkout via ZENITH order service</span>
               </div>
             </div>
           )}

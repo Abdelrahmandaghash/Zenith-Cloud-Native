@@ -192,7 +192,7 @@ export default function TourModal({ tour, onClose }) {
 
               <div className="flex items-center justify-center gap-2 text-[11px] text-zenith-stone/50 border-t border-zenith-stone/10 pt-3">
                 <ShieldCheck className="w-3.5 h-3.5 text-zenith-accent" />
-                <span>Microservice Tour Dispatch via Port 8002</span>
+                <span>Secure reservation via ZENITH expedition desk</span>
               </div>
             </>
           )}

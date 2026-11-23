@@ -12,6 +12,10 @@ export default defineConfig({
         target: 'http://localhost:8001',
         changeOrigin: true
       },
+      '/api/categories': {
+        target: 'http://localhost:8001',
+        changeOrigin: true
+      },
       '/api/tours': {
         target: 'http://localhost:8002',
         changeOrigin: true

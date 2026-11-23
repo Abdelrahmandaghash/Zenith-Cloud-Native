@@ -17,10 +17,11 @@ pipeline {
 
         stage('2. Static Checks & Tests') {
             steps {
-                echo '=== Stage 2: Running backend tests & endpoint verification ==='
-                // Runs lightweight test script verifying Python microservice schemas
+                echo '=== Stage 2: Running backend syntax checks & verification script ==='
                 sh '''
-                    python3 -c "import json; print('Python environment OK')" || python -c "import json; print('Python environment OK')"
+                    PYTHON_BIN=$(command -v python3 || command -v python)
+                    $PYTHON_BIN -m py_compile services/product-service/main.py services/tour-service/main.py services/order-service/main.py
+                    $PYTHON_BIN scripts/verify_all.py
                 '''
             }
         }
@@ -30,10 +31,12 @@ pipeline {
                 echo '=== Stage 3: Installing frontend dependencies & building React production bundle ==='
                 dir('frontend') {
                     sh '''
-                        echo "Building frontend production assets..."
-                        # In standard CI agent with node installed:
-                        # npm ci
-                        # npm run build
+                        if command -v npm >/dev/null 2>&1; then
+                          npm ci
+                          npm run build
+                        else
+                          echo "npm not installed on agent; skipping frontend build"
+                        fi
                     '''
                 }
             }
@@ -61,19 +64,20 @@ pipeline {
         stage('6. Smoke Tests & Verification') {
             steps {
                 echo '=== Stage 6: Running health checks against deployed microservices ==='
-                sleep 10
                 sh '''
+                    set -e
+                    sleep 10
                     echo "Checking Gateway health..."
-                    curl -s -f http://localhost:80/gateway-health || echo "Gateway warming up..."
-                    
+                    curl -s -f http://localhost:80/gateway-health
+
                     echo "Checking Product Service..."
-                    curl -s -f http://localhost:8001/health || true
+                    curl -s -f http://localhost:8001/health
 
                     echo "Checking Tour Service..."
-                    curl -s -f http://localhost:8002/health || true
+                    curl -s -f http://localhost:8002/health
 
                     echo "Checking Order Service..."
-                    curl -s -f http://localhost:8003/health || true
+                    curl -s -f http://localhost:8003/health
                 '''
             }
         }

@@ -104,8 +104,8 @@ Each microservice is an independent, lightweight FastAPI application with its ow
 
 | Service | Internal Port | Host Port | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Nginx API Gateway** | `80` | `80` | Single entry point for website & APIs |
-| **Frontend UI (Direct)** | `80` | `3000` | React Vite production container |
+| **Nginx API Gateway** | `8080` | `80` | Single entry point for website & APIs |
+| **Frontend UI (Direct)** | `8080` | `3000` | React Vite production container |
 | **Product Service** | `8001` | `8001` | Equipment catalog microservice |
 | **Tour Service** | `8002` | `8002` | Mountain expeditions microservice |
 | **Order Service** | `8003` | `8003` | Cart & checkout orders microservice |
@@ -121,7 +121,7 @@ Ensure Docker and Docker Compose are installed on your system.
 
 ### Step 1: Clone and Enter the Repository
 ```bash
-git clone https://github.com/your-username/zenith.git
+git clone <your-repo-url>
 cd zenith
 ```
 
@@ -204,25 +204,30 @@ zenith/
 │   │   ├── services/             # API client with fallback data
 │   │   ├── App.jsx
 │   │   └── main.jsx
-│   ├── Dockerfile                # Multi-stage Alpine container
+│   ├── .dockerignore
+│   ├── Dockerfile                # Multi-stage build, non-root Nginx runtime
+│   ├── nginx.conf                # Frontend SPA Nginx config
 │   ├── package.json
 │   └── vite.config.js
 │
 ├── services/                     # 3 Independent FastAPI Microservices
 │   ├── product-service/          # Equipment catalog & categories (Port 8001)
+│   │   ├── .dockerignore
+│   │   ├── Dockerfile
 │   │   ├── main.py
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
+│   │   └── requirements.txt
 │   │
 │   ├── tour-service/             # Expeditions & itineraries (Port 8002)
+│   │   ├── .dockerignore
+│   │   ├── Dockerfile
 │   │   ├── main.py
-│   │   ├── requirements.txt
-│   │   └── Dockerfile
+│   │   └── requirements.txt
 │   │
 │   └── order-service/            # Cart checkout & order records (Port 8003)
+│       ├── .dockerignore
+│       ├── Dockerfile
 │       ├── main.py
-│       ├── requirements.txt
-│       └── Dockerfile
+│       └── requirements.txt
 │
 ├── nginx/                        # API Gateway & Reverse Proxy
 │   └── nginx.conf

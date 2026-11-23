@@ -1,11 +1,12 @@
+import os
 import time
 import uuid
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 
 app = FastAPI(
     title="ZENITH Order Service",
@@ -13,9 +14,10 @@ app = FastAPI(
     version="1.0.0"
 )
 
+allowed_origins = [o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,7 +54,7 @@ class OrderItem(BaseModel):
 
 class OrderCreate(BaseModel):
     customer_name: str
-    customer_email: EmailStr
+    customer_email: str
     shipping_address: str
     items: List[OrderItem]
     subtotal: float
@@ -123,21 +125,33 @@ def create_order(order_in: OrderCreate):
     if not order_in.items:
         raise HTTPException(status_code=400, detail="Cannot place an empty order")
 
+    for item in order_in.items:
+        if item.quantity <= 0:
+            raise HTTPException(status_code=400, detail=f"Invalid quantity for item {item.product_id}")
+        if item.price < 0:
+            raise HTTPException(status_code=400, detail=f"Invalid price for item {item.product_id}")
+
+    # Compute authoritative totals server-side to avoid client tampering.
+    subtotal = round(sum(item.price * item.quantity for item in order_in.items), 2)
+    shipping_cost = 0.0 if subtotal >= 150 else 15.0
+    tax = round(subtotal * 0.08, 2)
+    total = round(subtotal + shipping_cost + tax, 2)
+
     order_id = f"ord-{uuid.uuid4().hex[:8]}"
     order_code = f"ZEN-ORD-{random.randint(10000, 99999)}"
-    now_iso = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     new_order = {
         "id": order_id,
         "order_code": order_code,
-        "customer_name": order_in.customer_name,
-        "customer_email": order_in.customer_email,
-        "shipping_address": order_in.shipping_address,
+        "customer_name": order_in.customer_name.strip(),
+        "customer_email": order_in.customer_email.strip(),
+        "shipping_address": order_in.shipping_address.strip(),
         "items": [item.model_dump() for item in order_in.items],
-        "subtotal": order_in.subtotal,
-        "shipping_cost": order_in.shipping_cost,
-        "tax": order_in.tax,
-        "total": order_in.total,
+        "subtotal": subtotal,
+        "shipping_cost": shipping_cost,
+        "tax": tax,
+        "total": total,
         "status": "confirmed",
         "created_at": now_iso
     }

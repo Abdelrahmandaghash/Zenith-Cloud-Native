@@ -24,11 +24,11 @@ export default function HomePage() {
           <img
             src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=2000&q=85"
             alt="Cinematic Himalayan Mountain Ridge"
-            className="w-full h-full object-cover object-center scale-105 animate-pulse duration-[10000ms]"
+            className="w-full h-full object-cover object-center scale-105"
           />
           {/* Deep Cinematic Gradient Overlays */}
           <div className="absolute inset-0 bg-gradient-to-t from-zenith-dark via-zenith-dark/60 to-black/40" />
-          <div className="absolute inset-0 bg-radial-gradient from-transparent to-zenith-dark/70" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(16,21,19,0.7)_100%)]" />
         </div>
 
         {/* Hero Content */}

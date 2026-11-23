@@ -1,0 +1,7 @@
+aws_region      = "us-east-1"
+project_name     = "zenith"
+environment      = "dev"
+app_image_tag    = "latest"
+desired_count    = 1
+db_instance_class = "db.t3.micro"
+allowed_http_cidr = "0.0.0.0/0" # tighten to your IP/32 for safer access

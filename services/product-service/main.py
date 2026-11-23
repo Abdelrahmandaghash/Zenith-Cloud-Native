@@ -1,3 +1,4 @@
+import os
 import time
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, Request, Response
@@ -11,9 +12,10 @@ app = FastAPI(
 )
 
 # Enable CORS for frontend communication
+allowed_origins = [o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "*").split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -1,48 +1,26 @@
-# Stage 1: Build the React frontend with Vite
-FROM node:20-alpine AS builder
+# syntax=docker/dockerfile:1
 
+# Stage 1: Build the React frontend with Vite
+FROM node:20-alpine AS build
 WORKDIR /app
 
-# Copy package descriptors
 COPY package*.json ./
-RUN npm install
+# Use npm install because no package-lock.json is committed yet.
+# Switch to `npm ci` once a lockfile is added for reproducible builds.
+RUN npm install --no-audit --no-fund
 
-# Copy source and build static assets
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve static production assets with Nginx
-FROM nginx:alpine
+# Stage 2: Serve static production assets as a non-root user
+FROM nginxinc/nginx-unprivileged:alpine AS runtime
 
-# Remove default nginx static assets
-RUN rm -rf /usr/share/nginx/html/*
+COPY --chown=nginx:nginx nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build --chown=nginx:nginx /app/dist /usr/share/nginx/html
 
-# Copy built assets from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Custom nginx configuration for React SPA routing
-COPY <<'EOF' /etc/nginx/conf.d/default.conf
-server {
-    listen 80;
-    server_name localhost;
-
-    location / {
-        root /usr/share/nginx/html;
-        index index.html index.htm;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Health check endpoint
-    location /health {
-        access_log off;
-        return 200 "healthy\n";
-    }
-}
-EOF
-
-EXPOSE 80
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-    CMD wget -qO- http://localhost/health || exit 1
+    CMD wget -qO- http://localhost:8080/health || exit 1
 
 CMD ["nginx", "-g", "daemon off;"]

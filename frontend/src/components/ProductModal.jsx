@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Star, ShoppingBag, ShieldCheck, Check, Sparkles } from 'lucide-react';
+import { X, Star, ShoppingBag, ShieldCheck, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 
 export default function ProductModal({ product, onClose }) {

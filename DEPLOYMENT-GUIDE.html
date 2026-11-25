@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZENITH — Complete Deployment Guide (Start to End)</title>
+<style>
+  :root {
+    --dark: #101513;
+    --forest: #142c25;
+    --stone: #d6d1c5;
+    --offwhite: #f5f5f0;
+    --accent: #e68a45;
+    --accent-hover: #cf7634;
+    --muted: #8a948f;
+    --code-bg: #0b0f0e;
+    --border: rgba(214,209,197,.14);
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    --err: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--dark); color: var(--offwhite);
+    font-family: 'Segoe UI', Inter, -apple-system, sans-serif;
+    line-height: 1.65; font-size: 15.5px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 22px; }
+  header {
+    background: linear-gradient(180deg, #0b0f0e 0%, var(--dark) 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 54px 0 38px; text-align: center;
+  }
+  header h1 { font-size: 2.2em; margin: 0 0 6px; letter-spacing: .04em; }
+  header h1 span { color: var(--accent); }
+  header p { color: var(--muted); margin: 0; }
+  .badge {
+    display: inline-block; background: var(--forest); color: var(--accent);
+    border: 1px solid var(--border); border-radius: 999px;
+    font-size: .78em; padding: 4px 14px; margin-bottom: 14px;
+    text-transform: uppercase; letter-spacing: .12em;
+  }
+  nav.toc {
+    background: var(--forest); border: 1px solid var(--border);
+    border-radius: 12px; padding: 18px 24px; margin: 30px 0;
+  }
+  nav.toc h3 { margin: 0 0 10px; font-size: 1em; color: var(--accent); text-transform: uppercase; letter-spacing: .1em; }
+  nav.toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 34px; }
+  nav.toc li { margin: 5px 0; break-inside: avoid; }
+  nav.toc a { color: var(--stone); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent); }
+  section { padding: 34px 0; border-top: 1px solid var(--border); }
+  h2 {
+    font-size: 1.55em; margin: 0 0 4px; color: var(--offwhite);
+    display: flex; align-items: center; gap: 12px;
+  }
+  h2 .num {
+    background: var(--accent); color: #fff; font-size: .62em;
+    width: 34px; height: 34px; border-radius: 9px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-weight: 700;
+  }
+  h3 { color: var(--accent); font-size: 1.08em; margin: 26px 0 8px; }
+  h4 { color: var(--stone); font-size: .98em; margin: 18px 0 6px; }
+  p { color: var(--stone); margin: 8px 0; }
+  .sub { color: var(--muted); font-size: .92em; margin-top: 0; }
+  code {
+    font-family: 'Cascadia Code', Consolas, 'Courier New', monospace;
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 5px; padding: 1.5px 6px; font-size: .88em; color: #f0b183;
+  }
+  pre {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 15px 17px; overflow-x: auto;
+    position: relative; margin: 10px 0 16px;
+  }
+  pre code {
+    background: none; border: none; padding: 0; color: #d8e0dc;
+    font-size: .87em; line-height: 1.6; display: block; white-space: pre;
+  }
+  pre .c { color: #6b7f77; }        /* comment */
+  pre .p { color: #7dd3fc; }        /* prompt / flag */
+  pre .o { color: #fbbf24; }        /* output */
+  .cmd-label {
+    font-size: .74em; text-transform: uppercase; letter-spacing: .1em;
+    color: var(--muted); margin-top: 16px; display: block;
+  }
+  .box {
+    border-left: 4px solid var(--accent); background: var(--forest);
+    border-radius: 0 10px 10px 0; padding: 13px 18px; margin: 16px 0;
+  }
+  .box.warn { border-left-color: var(--warn); background: rgba(251,191,36,.07); }
+  .box.err  { border-left-color: var(--err);  background: rgba(248,113,113,.07); }
+  .box.ok   { border-left-color: var(--ok);   background: rgba(74,222,128,.07); }
+  .box b { color: var(--offwhite); }
+  .box p { margin: 4px 0; color: var(--stone); }
+  table {
+    width: 100%; border-collapse: collapse; margin: 14px 0;
+    font-size: .92em; background: var(--code-bg);
+    border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  th, td { padding: 10px 13px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { background: var(--forest); color: var(--accent); font-size: .85em; text-transform: uppercase; letter-spacing: .06em; }
+  td { color: var(--stone); }
+  tr:last-child td { border-bottom: none; }
+  td code { white-space: nowrap; }
+  .step {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px; margin: 20px 0;
+  }
+  .step > h3 { margin-top: 0; display: flex; align-items: center; gap: 10px; }
+  .step > h3 .dot {
+    background: var(--forest); border: 1px solid var(--accent); color: var(--accent);
+    width: 26px; height: 26px; border-radius: 50%; font-size: .8em;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } nav.toc ol { columns: 1; } }
+  .arch {
+    background: var(--code-bg); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; font-family: Consolas, monospace; font-size: .82em;
+    color: var(--stone); overflow-x: auto; white-space: pre; line-height: 1.5;
+  }
+  footer {
+    border-top: 1px solid var(--border); padding: 30px 0 50px;
+    text-align: center; color: var(--muted); font-size: .85em;
+  }
+  .pill {
+    display: inline-block; font-size: .72em; font-weight: 700;
+    padding: 2px 9px; border-radius: 999px; margin-left: 8px; vertical-align: middle;
+  }
+  .pill.a { background: rgba(230,138,69,.15); color: var(--accent); border: 1px solid rgba(230,138,69,.4); }
+  .pill.b { background: rgba(125,211,252,.12); color: #7dd3fc; border: 1px solid rgba(125,211,252,.35); }
+  .pill.c { background: rgba(74,222,128,.12); color: var(--ok); border: 1px solid rgba(74,222,128,.35); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="badge">Cloud-Native Microservices Platform</div>
+    <h1>ZENITH <span>— Complete Deployment Guide</span></h1>
+    <p>From zero to a running application: Local Docker · AWS · Jenkins CI/CD</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#overview">What you are building</a></li>
+    <li><a href="#prereqs">Prerequisites &amp; installs</a></li>
+    <li><a href="#clone">Get the code</a></li>
+    <li><a href="#local">Run locally (Docker Compose)</a></li>
+    <li><a href="#verify-local">Verify the local app</a></li>
+    <li><a href="#aws">Run on AWS (Terraform)</a></li>
+    <li><a href="#aws-verify">Verify the AWS app</a></li>
+    <li><a href="#jenkins">Jenkins CI/CD pipeline</a></li>
+    <li><a href="#monitoring">Monitoring (Prometheus/Grafana)</a></li>
+    <li><a href="#cleanup">Cleanup &amp; stop everything</a></li>
+    <li><a href="#troubleshooting">Troubleshooting</a></li>
+    <li><a href="#glossary">Glossary — what every term means</a></li>
+  </ol>
+</nav>
+
+<!-- ============================ 1. OVERVIEW ============================ -->
+<section id="overview">
+  <h2><span class="num">1</span> What you are building</h2>
+  <p class="sub">Read this first — every later step is just plumbing for this picture.</p>
+
+  <p>ZENITH is a small e-commerce + expeditions website split into independent services (a <b>microservices</b> architecture). Instead of one big program, you have several small programs that talk over HTTP:</p>
+
+  <div class="arch">Browser ──HTTP──▶ Nginx Gateway (:80)          ◀── "the front door"
+                        │
+        ┌───────────────┼────────────────┬─────────────────┐
+        ▼               ▼                ▼                 ▼
+   React Frontend   Product API      Tour API         Order API
+   (:8080)          (:8001)          (:8002)          (:8003)
+                        │                                 │
+                        │                                 ▼
+                        │                          PostgreSQL (:5432)
+                        │
+        Prometheus (:9090) ──scrapes /metrics──▶ all 3 APIs
+        Grafana    (:3001) ──reads Prometheus──▶ dashboards</div>
+
+  <table>
+    <tr><th>Component</th><th>Job</th><th>Where it runs</th></tr>
+    <tr><td><b>Frontend</b></td><td>React UI (shop, expeditions, cart)</td><td>Local / ECS Fargate</td></tr>
+    <tr><td><b>Product service</b></td><td>Lists equipment, categories, search</td><td>Local / ECS Fargate</td></tr>
+    <tr><td><b>Tour service</b></td><td>Lists mountain expeditions</td><td>Local / ECS Fargate</td></tr>
+    <tr><td><b>Order service</b></td><td>Accepts checkout orders</td><td>Local / ECS Fargate</td></tr>
+    <tr><td><b>Nginx gateway</b></td><td>Reverse proxy — routes URLs to services</td><td>Local only (AWS uses ALB)</td></tr>
+    <tr><td><b>PostgreSQL</b></td><td>Database (for order persistence)</td><td>Local / Amazon RDS</td></tr>
+    <tr><td><b>Prometheus + Grafana</b></td><td>Metrics collection + dashboards</td><td>Local only (by design)</td></tr>
+  </table>
+
+  <div class="box">
+    <p><b>Three ways to run this project:</b></p>
+    <p>🟢 <b>Path A — Local</b> (Docker Compose): fastest, free, best for development.</p>
+    <p>🔵 <b>Path B — AWS</b> (Terraform → ECS/RDS/ALB): what you show in interviews as a cloud deployment.</p>
+    <p>🟠 <b>Path C — Jenkins</b>: automates Path B — push code, pipeline deploys for you.</p>
+  </div>
+</section>
+
+<!-- ============================ 2. PREREQS ============================ -->
+<section id="prereqs">
+  <h2><span class="num">2</span> Prerequisites &amp; installs</h2>
+  <p class="sub">One-time setup. Check each box as you go.</p>
+
+  <h3>2.1 Required for every path</h3>
+  <table>
+    <tr><th>Tool</th><th>Why</th><th>Check command</th><th>Install</th></tr>
+    <tr>
+      <td><b>Git</b></td>
+      <td>Download the repo, commit/push</td>
+      <td><code>git --version</code></td>
+      <td>Already included with Git for Windows</td>
+    </tr>
+    <tr>
+      <td><b>Docker Desktop</b></td>
+      <td>Builds images &amp; runs containers (the whole local path depends on it)</td>
+      <td><code>docker version</code></td>
+      <td>docker.com/products/docker-desktop</td>
+    </tr>
+    <tr>
+      <td><b>Python 3</b></td>
+      <td>Runs the verification script &amp; the FastAPI services' checks</td>
+      <td><code>python --version</code></td>
+      <td>python.org (check "Add to PATH" during install)</td>
+    </tr>
+  </table>
+
+  <h3>2.2 Required for AWS (Path B/C)</h3>
+  <table>
+    <tr><th>Tool</th><th>Why</th><th>Check command</th><th>Install</th></tr>
+    <tr>
+      <td><b>Terraform</b></td>
+      <td>Creates all AWS resources as code (VPC, ECS, RDS, ALB...)</td>
+      <td><code>terraform version</code></td>
+      <td>developer.hashicorp.com/terraform/install</td>
+    </tr>
+    <tr>
+      <td><b>AWS CLI v2</b></td>
+      <td>Lets scripts talk to AWS (login, ECR push, ECS deploy)</td>
+      <td><code>aws --version</code></td>
+      <td>docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html</td>
+    </tr>
+    <tr>
+      <td><b>AWS account</b></td>
+      <td>Where the infrastructure lives</td>
+      <td>—</td>
+      <td>aws.amazon.com (free tier eligible services used)</td>
+    </tr>
+  </table>
+
+  <h3>2.3 Configure your AWS credentials</h3>
+  <p>Before Terraform or the AWS CLI can do anything, AWS must know <b>who you are</b>. Credentials are stored <b>on your machine only</b> — never in the repo, never in chat.</p>
+
+  <span class="cmd-label">Option 1 — interactive setup (recommended for beginners)</span>
+<pre><code><span class="p">PS&gt;</span> aws configure
+<span class="o">AWS Access Key ID [None]:</span> AKIA................   <span class="c"># paste key</span>
+<span class="o">AWS Secret Access Key [None]:</span> ...................... <span class="c"># paste secret</span>
+<span class="o">Default region name [None]:</span> us-east-1
+<span class="o">Default output format [None]:</span> json</code></pre>
+
+  <span class="cmd-label">Option 2 — verify it worked (this must print YOUR account)</span>
+<pre><code><span class="p">PS&gt;</span> aws sts get-caller-identity
+<span class="o">{
+    "Account": "123456789012",
+    "Arn": "arn:aws:iam::123456789012:user/your-name"
+}</span></code></pre>
+
+  <div class="box warn">
+    <p><b>⚠️ Security note:</b> if AWS keys were ever shared (file, chat, screenshot) — <b>rotate them</b>: AWS Console → IAM → Users → your user → Security credentials → deactivate old key → create new one. Treat exposed keys as stolen.</p>
+  </div>
+
+  <h3>2.4 (Path C only) Jenkins</h3>
+  <p>Jenkins is an automation server — a web app that runs your pipeline. Easiest way to try it locally:</p>
+<pre><code><span class="p">PS&gt;</span> docker run -d --name jenkins -p 8080:8080 -p 50000:50000 `
+    -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts-jdk17</code></pre>
+  <p>Then open <code>http://localhost:8080</code>, unlock with the password printed by <code>docker logs jenkins</code>, and install the suggested plugins.</p>
+</section>
+
+<!-- ============================ 3. CLONE ============================ -->
+<section id="clone">
+  <h2><span class="num">3</span> Get the code</h2>
+  <p class="sub">Every path starts here.</p>
+
+<pre><code><span class="p">PS&gt;</span> git clone https://github.com/Abdelrahmandaghash/Zenith-Cloud-Native.git
+<span class="p">PS&gt;</span> cd Zenith-Cloud-Native</code></pre>
+
+  <span class="cmd-label">Optional but recommended — verify the project is intact</span>
+<pre><code><span class="p">PS&gt;</span> python scripts/verify_all.py
+<span class="o">=== ZENITH Platform Architecture Verification ===
+Found 3 Python files: ... [OK] ...
+All ZENITH platform components successfully verified!</span></code></pre>
+
+  <div class="box ok"><p><b>✅ If you see "All ZENITH platform components successfully verified!" the repo is healthy and ready to run.</b></p></div>
+
+  <h3>What's in the folder</h3>
+<pre><code>zenith/
+├── frontend/            <span class="c"># React + Vite app (the UI)</span>
+├── services/
+│   ├── product-service/ <span class="c"># FastAPI :8001</span>
+│   ├── tour-service/    <span class="c"># FastAPI :8002</span>
+│   └── order-service/   <span class="c"># FastAPI :8003</span>
+├── nginx/               <span class="c"># local gateway config</span>
+├── monitoring/          <span class="c"># Prometheus + Grafana configs</span>
+├── jenkins/Jenkinsfile  <span class="c"># AWS CI/CD pipeline</span>
+├── terraform/           <span class="c"># AWS infrastructure as code</span>
+├── docker-compose.yml   <span class="c"># local orchestration (8 containers)</span>
+└── scripts/             <span class="c"># verification helpers</span></code></pre>
+</section>
+
+<!-- ============================ 4. LOCAL ============================ -->
+<section id="local">
+  <h2><span class="num">4</span> Path A — Run locally with Docker Compose</h2>
+  <p class="sub">Fastest way to see the app working. Free. No AWS needed.</p>
+
+  <div class="box"><p><b>What Compose does:</b> <code>docker-compose.yml</code> is a recipe that describes all 8 containers (gateway, frontend, 3 APIs, Postgres, Prometheus, Grafana) and how they connect. One command builds and starts all of them on a private network.</p></div>
+
+  <div class="step">
+    <h3><span class="dot">1</span> Make sure Docker Desktop is running</h3>
+    <p>Look for the whale icon in your system tray. If it's not there, start Docker Desktop and wait until it says "Docker Desktop is running".</p>
+<pre><code><span class="p">PS&gt;</span> docker version
+<span class="c"># If this prints version info for Client AND Server, Docker is ready.</span>
+<span class="c"># If it errors → start Docker Desktop and wait ~30 seconds.</span></code></pre>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">2</span> Build and start everything</h3>
+<pre><code><span class="p">PS&gt;</span> docker compose up --build -d</code></pre>
+    <p><b>Explain each part:</b></p>
+    <table>
+      <tr><th>Part</th><th>Meaning</th></tr>
+      <tr><td><code>docker compose</code></td><td>Reads <code>docker-compose.yml</code> and manages the whole stack</td></tr>
+      <tr><td><code>up</code></td><td>Create the network + start all containers</td></tr>
+      <tr><td><code>--build</code></td><td>Rebuild images from your Dockerfiles first (needed after any code change)</td></tr>
+      <tr><td><code>-d</code></td><td>Detached — runs in the background so your terminal stays free</td></tr>
+    </table>
+    <p class="sub">First run downloads base images and builds — expect 2–5 minutes. Later runs are seconds.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">3</span> Check container health</h3>
+<pre><code><span class="p">PS&gt;</span> docker compose ps</code></pre>
+    <p>Every service should show <code>Up</code> and (after ~15s) <code>healthy</code>. <b>Why "healthy"?</b> Each container runs a periodic healthcheck (curl its <code>/health</code> endpoint); Docker marks it healthy only if that keeps succeeding.</p>
+<pre><code><span class="p">PS&gt;</span> docker compose logs -f product-service   <span class="c"># watch one service's logs (Ctrl+C to stop watching)</span></code></pre>
+  </div>
+</section>
+
+<!-- ============================ 5. VERIFY LOCAL ============================ -->
+<section id="verify-local">
+  <h2><span class="num">5</span> Verify the local app</h2>
+  <p class="sub">Open these in your browser once containers are healthy.</p>
+
+  <table>
+    <tr><th>What</th><th>URL</th><th>What you should see</th></tr>
+    <tr><td><b>Main site</b></td><td><a href="http://localhost">http://localhost</a></td><td>ZENITH homepage (hero, products, tours)</td></tr>
+    <tr><td>Shop</td><td><a href="http://localhost/shop">http://localhost/shop</a></td><td>15 products, filters, search</td></tr>
+    <tr><td>Expeditions</td><td><a href="http://localhost/expeditions">http://localhost/expeditions</a></td><td>6 mountain tours</td></tr>
+    <tr><td>Gateway health</td><td><a href="http://localhost/gateway-health">http://localhost/gateway-health</a></td><td><code>{"status":"healthy",...}</code></td></tr>
+    <tr><td>Frontend direct</td><td><a href="http://localhost:3000">http://localhost:3000</a></td><td>Same site, bypassing gateway</td></tr>
+    <tr><td>Product API</td><td><a href="http://localhost:8001/api/products">http://localhost:8001/api/products</a></td><td>JSON list of products</td></tr>
+    <tr><td>Tour API</td><td><a href="http://localhost:8002/api/tours">http://localhost:8002/api/tours</a></td><td>JSON list of tours</td></tr>
+    <tr><td>Order API</td><td><a href="http://localhost:8003/api/orders">http://localhost:8003/api/orders</a></td><td>JSON list of orders</td></tr>
+    <tr><td>Prometheus</td><td><a href="http://localhost:9090">http://localhost:9090</a></td><td>Prometheus query UI</td></tr>
+    <tr><td>Grafana</td><td><a href="http://localhost:3001">http://localhost:3001</a></td><td>Login <code>admin</code> / <code>admin</code></td></tr>
+  </table>
+
+  <div class="box">
+    <p><b>How requests flow (try it yourself):</b> visit <code>http://localhost/api/products</code> — the gateway sees <code>/api/products</code> and proxies it to the product service. Now compare with <code>http://localhost:8001/api/products</code> — same JSON, but you bypassed the gateway. That's what a reverse proxy does.</p>
+  </div>
+
+  <span class="cmd-label">Quick end-to-end test: place an order from the UI</span>
+  <p>Add items to the bag → <b>Proceed to Checkout</b> → fill name/email/address → <b>Confirm &amp; Place Order</b>. You'll see an order code like <code>ZEN-ORD-12345</code>. Then check <code>http://localhost:8003/api/orders</code> — your order is at the top of the list.</p>
+
+  <div class="box warn">
+    <p><b>Known limitation:</b> the order service keeps orders <b>in memory</b>. Restarting the container (<code>docker compose restart order-service</code>) wipes them. Postgres is running and wired via <code>DATABASE_URL</code>, but the service doesn't write to it yet — that's a deliberate "next feature", not a broken setup.</p>
+  </div>
+</section>
+
+<!-- ============================ 6. AWS ============================ -->
+<section id="aws">
+  <h2><span class="num">6</span> Path B — Run on AWS (Terraform)</h2>
+  <p class="sub">Deploys the same containers to real AWS: ECS Fargate + ALB + RDS.</p>
+
+  <div class="box"><p><b>The mental model:</b> locally, <code>docker compose up</code> starts containers on your PC. On AWS, Terraform creates the <i>equivalent infrastructure</i> (servers you don't see, load balancer, database), then your images run on it. Terraform = "recipe for cloud resources".</p></div>
+
+  <table>
+    <tr><th>Local (Compose)</th><th>AWS (Terraform)</th></tr>
+    <tr><td>docker build</td><td>ECR (container registry — "private Docker Hub for your account")</td></tr>
+    <tr><td>containers on your PC</td><td>ECS Fargate (AWS runs your containers serverlessly)</td></tr>
+    <tr><td>Nginx gateway :80</td><td>ALB (Application Load Balancer — routes URLs to services)</td></tr>
+    <tr><td>Postgres container</td><td>RDS (managed database — backups/patching handled by AWS)</td></tr>
+    <tr><td>docker compose logs</td><td>CloudWatch Logs</td></tr>
+  </table>
+
+  <div class="step">
+    <h3><span class="dot">1</span> Initialize Terraform</h3>
+    <p>Downloads the AWS provider plugin (one-time).</p>
+<pre><code><span class="p">PS&gt;</span> cd terraform
+<span class="p">PS&gt;</span> terraform init
+<span class="o">Terraform has been successfully initialized!</span></code></pre>
+    <p class="sub"><b>Why:</b> Terraform doesn't ship with AWS support built-in; <code>init</code> downloads the <code>hashicorp/aws</code> provider so Terraform knows how to create AWS resources.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">2</span> Review what will be created</h3>
+<pre><code><span class="p">PS&gt;</span> terraform plan</code></pre>
+    <p>Terraform prints a diff: <code>+ create</code> for ~40 resources (VPC, subnets, security groups, 4 ECR repos, ECS cluster/services, ALB, RDS, IAM roles, log groups...). <b>Read it — never apply what you don't understand.</b></p>
+    <p>Defaults are fine to start: region <code>us-east-1</code>, RDS <code>db.t3.micro</code>, everything named <code>zenith-dev-*</code>. Want to change something? Copy <code>terraform.tfvars.example</code> → <code>terraform.tfvars</code> and edit.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">3</span> Create the infrastructure</h3>
+<pre><code><span class="p">PS&gt;</span> terraform apply
+<span class="c"># type:  yes   (confirm)</span>
+<span class="o">Apply complete! Resources: ~40 added.</span></code></pre>
+    <p>Takes ~5–10 minutes. <b>At this point the "shell" exists</b> — but ECS tasks will show errors like <code>CannotPullContainerError</code> because your images aren't in ECR yet. That's expected; Step 4 fixes it.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">4</span> Grab the important addresses</h3>
+<pre><code><span class="p">PS&gt;</span> terraform output ecr_repository_urls
+<span class="o">{
+  "frontend" = "123456789012.dkr.ecr.us-east-1.amazonaws.com/zenith-dev-frontend"
+  "product"  = "123456789012.dkr.ecr.us-east-1.amazonaws.com/zenith-dev-product"
+  "tour"     = "123456789012.dkr.ecr.us-east-1.amazonaws.com/zenith-dev-tour"
+  "order"    = "123456789012.dkr.ecr.us-east-1.amazonaws.com/zenith-dev-order"
+}</span></code></pre>
+    <p class="sub"><b>ECR</b> = Elastic Container Registry. It stores your Docker images in the cloud so ECS can pull them.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">5</span> Log in to ECR</h3>
+<pre><code><span class="p">PS&gt;</span> $ACCOUNT = aws sts get-caller-identity --query Account --output text
+<span class="p">PS&gt;</span> aws ecr get-login-password --region us-east-1 |
+      docker login --username AWS --password-stdin "$ACCOUNT.dkr.ecr.us-east-1.amazonaws.com"</code></pre>
+    <p class="sub"><b>Why login?</b> ECR is <b>private</b>. This exchanges your AWS credentials for a ~12-hour token that lets Docker push/pull images. (ECS itself uses an IAM role, not this token.)</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">6</span> Build &amp; push all 4 images</h3>
+<pre><code><span class="p">PS&gt;</span> cd ..   <span class="c"># back to repo root</span>
+<span class="p">PS&gt;</span> $ACCOUNT = aws sts get-caller-identity --query Account --output text
+<span class="p">PS&gt;</span> $ECR = "$ACCOUNT.dkr.ecr.us-east-1.amazonaws.com"
+
+<span class="p">PS&gt;</span> docker build -t $ECR/zenith-dev-frontend:latest ./frontend
+<span class="p">PS&gt;</span> docker push  $ECR/zenith-dev-frontend:latest
+
+<span class="p">PS&gt;</span> docker build -t $ECR/zenith-dev-product:latest ./services/product-service
+<span class="p">PS&gt;</span> docker push  $ECR/zenith-dev-product:latest
+
+<span class="p">PS&gt;</span> docker build -t $ECR/zenith-dev-tour:latest ./services/tour-service
+<span class="p">PS&gt;</span> docker push  $ECR/zenith-dev-tour:latest
+
+<span class="p">PS&gt;</span> docker build -t $ECR/zenith-dev-order:latest ./services/order-service
+<span class="p">PS&gt;</span> docker push  $ECR/zenith-dev-order:latest</code></pre>
+    <p class="sub"><b>build</b> = compile image locally from the Dockerfile. <b>push</b> = upload it to ECR. ECS will pull <code>:latest</code> from here.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">7</span> Tell ECS to start the tasks</h3>
+<pre><code><span class="p">PS&gt;</span> $CLUSTER = "zenith-dev-cluster"
+<span class="p">PS&gt;</span> foreach ($svc in @("frontend","product","tour","order")) {
+      aws ecs update-service --cluster $CLUSTER --service "zenith-dev-$svc" --force-new-deployment
+    }
+<span class="p">PS&gt;</span> aws ecs wait services-stable --cluster $CLUSTER `
+      --services zenith-dev-frontend zenith-dev-product zenith-dev-tour zenith-dev-order</code></pre>
+    <p class="sub"><b>Explain:</b> <code>update-service</code> restarts the service so it pulls the new images; <code>ecs wait</code> blocks until all tasks are running &amp; healthy (takes 1–2 min).</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">8</span> Get your public URL</h3>
+<pre><code><span class="p">PS&gt;</span> terraform output app_url
+<span class="o">"http://zenith-dev-alb-1234567890.us-east-1.elb.amazonaws.com"</span></code></pre>
+    <p>Open it in a browser — same site as local. <b>The ALB</b> (load balancer) receives the request and routes by path: <code>/api/products* → product service</code>, <code>/api/tours* → tour</code>, <code>/api/orders* → order</code>, <code>/* → frontend</code>.</p>
+  </div>
+</section>
+
+<!-- ============================ 7. AWS VERIFY ============================ -->
+<section id="aws-verify">
+  <h2><span class="num">7</span> Verify the AWS deployment</h2>
+
+  <h3>7.1 All services running?</h3>
+<pre><code><span class="p">PS&gt;</span> aws ecs describe-services --cluster zenith-dev-cluster `
+      --services zenith-dev-frontend zenith-dev-product zenith-dev-tour zenith-dev-order `
+      --query "services[].{Name:serviceName,Status:status,Running:runningCount,Desired:desiredCount}"</code></pre>
+  <p>Expected: every row shows <code>Status: ACTIVE</code> and <code>Running == Desired</code>.</p>
+
+  <h3>7.2 Endpoints through the ALB</h3>
+<pre><code><span class="p">PS&gt;</span> $URL = (terraform output -raw app_url)
+<span class="p">PS&gt;</span> curl "$URL/health"          <span class="c"># frontend OK</span>
+<span class="p">PS&gt;</span> curl "$URL/api/products"    <span class="c"># JSON from product service</span>
+<span class="p">PS&gt;</span> curl "$URL/api/tours"
+<span class="p">PS&gt;</span> curl "$URL/api/orders"</code></pre>
+
+  <h3>7.3 Read the logs</h3>
+<pre><code><span class="p">PS&gt;</span> aws logs tail /ecs/zenith-dev-product --follow   <span class="c"># Ctrl+C to stop</span></code></pre>
+
+  <div class="box warn">
+    <p><b>⚠️ Cost alert:</b> while running, AWS charges for the ALB (~$0.0225/hr), ECS Fargate vCPU/memory, RDS, and possibly data. <b>When you're done experimenting → <code>terraform destroy</code></b> (Step 10). Idle-but-not-destroyed still costs money.</p>
+  </div>
+</section>
+
+<!-- ============================ 8. JENKINS ============================ -->
+<section id="jenkins">
+  <h2><span class="num">8</span> Path C — Jenkins CI/CD pipeline</h2>
+  <p class="sub">Automates everything in Path B: push code → Jenkins builds, tests, deploys.</p>
+
+  <div class="box"><p><b>What Jenkins adds:</b> without it, you run Steps 5–7 by hand every time you change code. With it, Jenkins runs the same commands automatically whenever you click <b>Build</b> or push to GitHub. That's CI/CD (Continuous Integration / Continuous Delivery).</p></div>
+
+  <h3>8.1 The 6 stages in <code>jenkins/Jenkinsfile</code></h3>
+  <table>
+    <tr><th>#</th><th>Stage</th><th>Runs</th><th>Fails if…</th></tr>
+    <tr><td>1</td><td>Checkout</td><td><code>git clone</code> your repo</td><td>repo unreachable</td></tr>
+    <tr><td>2</td><td>Static checks</td><td><code>py_compile</code> ×3 + <code>verify_all.py</code></td><td>syntax/config error</td></tr>
+    <tr><td>3</td><td>AWS auth + ECR login</td><td><code>sts get-caller-identity</code>, <code>docker login</code></td><td>bad credentials</td></tr>
+    <tr><td>4</td><td>Build &amp; push</td><td><code>docker build</code> + <code>push</code> ×4</td><td>build error / push denied</td></tr>
+    <tr><td>5</td><td>Deploy</td><td><code>ecs update-service --force-new-deployment</code> + wait</td><td>tasks never stabilize</td></tr>
+    <tr><td>6</td><td>Smoke tests</td><td><code>curl</code> /health, /api/products, /api/tours, /api/orders</td><td>any endpoint ≠ 2xx</td></tr>
+  </table>
+
+  <div class="step">
+    <h3><span class="dot">1</span> Start Jenkins (local trial)</h3>
+<pre><code><span class="p">PS&gt;</span> docker run -d --name jenkins -p 8080:8080 -p 50000:50000 `
+    -v jenkins_home:/var/jenkins_home jenkins/jenkins:lts-jdk17
+<span class="p">PS&gt;</span> docker logs jenkins 2&gt;&amp;1 | Select-String "Please use"
+<span class="c"># Copy the initial admin password shown there.</span></code></pre>
+    <p>Open <code>http://localhost:8080</code> → paste password → <b>Install suggested plugins</b> → create admin user.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">2</span> Add your AWS credential</h3>
+    <p>Dashboard → <b>Manage Jenkins → Credentials → System → Global credentials → Add Credentials</b>:</p>
+    <table>
+      <tr><th>Field</th><th>Value</th></tr>
+      <tr><td>Kind</td><td><b>Username with password</b></td></tr>
+      <tr><td>ID</td><td><code>aws-credentials</code> <b>(exact — the Jenkinsfile references this ID)</b></td></tr>
+      <tr><td>Username</td><td>Your AWS Access Key ID</td></tr>
+      <tr><td>Password</td><td>Your AWS Secret Access Key</td></tr>
+    </table>
+    <p class="sub"><b>Why this way?</b> Secrets live in Jenkins' encrypted store, not in the Jenkinsfile or Git. The pipeline reads them at runtime via <code>withCredentials</code>.</p>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">3</span> Install agent tools</h3>
+    <p>The machine running the job needs: <b>Docker</b>, <b>AWS CLI</b>, <b>Python 3</b>, <b>Git</b>. Quick check inside the Jenkins container (if you run Jenkins in Docker, it needs access to the host's Docker socket — for a serious setup use a separate Linux agent with these tools installed).</p>
+<pre><code><span class="p">PS&gt;</span> docker exec jenkins sh -c "git --version; python3 --version; aws --version; docker version --format '{{.Server.Version}}'"</code></pre>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">4</span> Create the job</h3>
+    <p><b>New Item → Pipeline</b> → name it (e.g. <code>zenith-deploy</code>) → under <b>Pipeline</b> section choose <b>Pipeline script from SCM</b> →</p>
+    <table>
+      <tr><th>Field</th><th>Value</th></tr>
+      <tr><td>SCM</td><td>Git</td></tr>
+      <tr><td>Repository URL</td><td><code>https://github.com/Abdelrahmandaghash/Zenith-Cloud-Native.git</code></td></tr>
+      <tr><td>Credentials</td><td>(none for public repo)</td></tr>
+      <tr><td>Branch</td><td><code>*/master</code></td></tr>
+      <tr><td>Script Path</td><td><code>jenkins/Jenkinsfile</code></td></tr>
+    </table>
+  </div>
+
+  <div class="step">
+    <h3><span class="dot">5</span> Run it</h3>
+    <p>Click <b>Build Now</b>. Watch the <b>Pipeline Steps</b> view — each stage turns green as it passes. First run downloads the Jenkins image plugins etc. and builds 4 images, so allow ~10 minutes.</p>
+    <p>✅ <b>Green = deployed.</b> ❌ <b>Red = click the failing stage → read the console output</b> (the error is almost always there).</p>
+  </div>
+
+  <div class="box ok"><p><b>The loop you've built:</b> change code → <code>git push</code> → (webhook or manual Build) → Jenkins tests → builds → pushes to ECR → updates ECS → curls the ALB. Zero manual AWS commands.</p></div>
+</section>
+
+<!-- ============================ 9. MONITORING ============================ -->
+<section id="monitoring">
+  <h2><span class="num">9</span> Monitoring (Prometheus + Grafana)</h2>
+  <p class="sub">Local only — by design, to stay on the free tier.</p>
+
+  <h3>How it works</h3>
+  <div class="arch">each FastAPI service ──exposes──▶ /metrics  (Prometheus text format)
+        ▲
+        │ scrape every 5 seconds
+Prometheus (:9090)  ──stores time-series data──▶  queries
+        ▲
+        │ reads
+Grafana (:3001)     ──renders──▶  dashboards (uptime, requests, latency, orders)</div>
+
+  <ol>
+    <li><b>Instrumentation</b> — every service has HTTP middleware counting requests, status codes, latency (see <code>track_metrics_middleware</code> in each <code>main.py</code>).</li>
+    <li><b>Scraping</b> — <code>monitoring/prometheus/prometheus.yml</code> tells Prometheus to hit <code>product-service:8001/metrics</code>, <code>tour-service:8002/metrics</code>, <code>order-service:8003/metrics</code> every 5s.</li>
+    <li><b>Visualization</b> — Grafana auto-loads a datasource + dashboard from <code>monitoring/grafana/provisioning/</code> (no clicking required).</li>
+  </ol>
+
+  <h3>View it</h3>
+  <ol>
+    <li>Open <code>http://localhost:9090</code> → <b>Status → Targets</b> → all 3 services should be <b>UP</b>.</li>
+    <li>Open <code>http://localhost:3001</code> → login <code>admin</code>/<code>admin</code> → dashboards folder <b>"ZENITH Platform"</b> → <b>ZENITH — Microservices Health &amp; Traffic</b>.</li>
+    <li>Click around the site to generate traffic, watch the charts move within 5–15 seconds.</li>
+  </ol>
+
+  <table>
+    <tr><th>Metric</th><th>Means</th></tr>
+    <tr><td><code>zenith_http_requests_total</code></td><td>How many requests each service handled (by status code)</td></tr>
+    <tr><td><code>zenith_http_request_duration_seconds</code></td><td>Average response time</td></tr>
+    <tr><td><code>zenith_orders_created_total</code></td><td>Total orders placed</td></tr>
+    <tr><td><code>zenith_service_uptime_seconds</code></td><td>How long each service has been running</td></tr>
+  </table>
+</section>
+
+<!-- ============================ 10. CLEANUP ============================ -->
+<section id="cleanup">
+  <h2><span class="num">10</span> Cleanup &amp; stop everything</h2>
+
+  <h3>Stop local containers (keeps images &amp; data)</h3>
+<pre><code><span class="p">PS&gt;</span> docker compose down</code></pre>
+  <p class="sub">Removes containers + network. Volumes (Postgres/Grafana/Prometheus data) are <b>kept</b>. Restart later with <code>docker compose up -d</code>.</p>
+
+  <h3>Full local reset (deletes DB data too)</h3>
+<pre><code><span class="p">PS&gt;</span> docker compose down -v        <span class="c"># -v removes named volumes</span></code></pre>
+
+  <h3>Destroy AWS infrastructure (stops all charges)</h3>
+<pre><code><span class="p">PS&gt;</span> cd terraform
+<span class="p">PS&gt;</span> terraform destroy
+<span class="c"># type: yes</span></code></pre>
+  <div class="box err"><p><b>This deletes everything Terraform created</b> — ECS, ALB, RDS, ECR, VPC. RDS has <code>skip_final_snapshot = true</code> so no snapshot prompt. Re-running the AWS path later starts fresh.</p></div>
+
+  <h3>Stop Jenkins</h3>
+<pre><code><span class="p">PS&gt;</span> docker stop jenkins</code></pre>
+</section>
+
+<!-- ============================ 11. TROUBLESHOOTING ============================ -->
+<section id="troubleshooting">
+  <h2><span class="num">11</span> Troubleshooting</h2>
+
+  <table>
+    <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+    <tr>
+      <td><code>docker: command not found</code> / daemon not running</td>
+      <td>Docker Desktop not started</td>
+      <td>Start Docker Desktop, wait for "running"</td>
+    </tr>
+    <tr>
+      <td>Port already in use (80/3000/8001...)</td>
+      <td>Another process holds the port</td>
+      <td><code>docker compose down</code> first, or stop the conflicting app</td>
+    </tr>
+    <tr>
+      <td>Gateway <code>502 Bad Gateway</code></td>
+      <td>Backend container starting/not healthy</td>
+      <td><code>docker compose ps</code> → wait or <code>docker compose logs &lt;service&gt;</code></td>
+    </tr>
+    <tr>
+      <td>Frontend shows sample data only</td>
+      <td>API unreachable → frontend falls back to local sample data (by design)</td>
+      <td>Check <code>docker compose ps</code>; in dev mode check Vite proxy</td>
+    </tr>
+    <tr>
+      <td><code>CannotPullContainerError</code> on AWS</td>
+      <td>Images not pushed to ECR yet</td>
+      <td>Run Step 6 (build/push) then Step 7 (force deployment)</td>
+    </tr>
+    <tr>
+      <td><code>An error occurred (AccessDenied)</code> on push</td>
+      <td>Not logged in to ECR / wrong account</td>
+      <td>Re-run Step 5 (ECR login), verify <code>aws sts get-caller-identity</code></td>
+    </tr>
+    <tr>
+      <td><code>terraform apply</code> fails on RDS</td>
+      <td>Account limits, service quotas, or name already exists</td>
+      <td>Read the error; delete leftover via console; wait for RDS "processing" to finish</td>
+    </tr>
+    <tr>
+      <td>Jenkins stage 3 fails</td>
+      <td>Credential missing or wrong ID</td>
+      <td>Credential ID must be exactly <code>aws-credentials</code></td>
+    </tr>
+    <tr>
+      <td>Jenkins stage 6 fails</td>
+      <td>A service unhealthy after deploy</td>
+      <td>Check ECS console → tasks → stopped reason; read CloudWatch logs</td>
+    </tr>
+    <tr>
+      <td>Grafana dashboard says "No data"</td>
+      <td>Prometheus has no targets yet</td>
+      <td>Open Prometheus → Status → Targets; generate traffic first</td>
+    </tr>
+    <tr>
+      <td>Orders disappear on restart</td>
+      <td>Order service is in-memory (known limitation)</td>
+      <td>Expected — add DB persistence to use RDS/Postgres</td>
+    </tr>
+    <tr>
+      <td><code>npm ci</code> fails in frontend build</td>
+      <td>No <code>package-lock.json</code> committed yet</td>
+      <td>Run <code>npm install</code> locally once, commit the lockfile, then switch Dockerfile to <code>npm ci</code></td>
+    </tr>
+  </table>
+
+  <span class="cmd-label">Universal debug commands</span>
+<pre><code><span class="p">PS&gt;</span> docker compose ps                       <span class="c"># what's running / health</span>
+<span class="p">PS&gt;</span> docker compose logs -f &lt;service&gt;       <span class="c"># live logs (Ctrl+C exits)</span>
+<span class="p">PS&gt;</span> docker compose up --build -d            <span class="c"># rebuild after code changes</span>
+<span class="p">PS&gt;</span> python scripts/verify_all.py            <span class="c"># repo integrity check</span>
+<span class="p">PS&gt;</span> terraform validate                      <span class="c"># is the AWS code valid</span>
+<span class="p">PS&gt;</span> aws sts get-caller-identity             <span class="c"># are AWS creds working</span></code></pre>
+</section>
+
+<!-- ============================ 12. GLOSSARY ============================ -->
+<section id="glossary">
+  <h2><span class="num">12</span> Glossary — what every term means</h2>
+
+  <table>
+    <tr><th>Term</th><th>Plain-English meaning</th></tr>
+    <tr><td><b>Image</b></td><td>A frozen snapshot of your app + its dependencies (like an installer file)</td></tr>
+    <tr><td><b>Container</b></td><td>A running instance of an image (like a program launched from an installer)</td></tr>
+    <tr><td><b>Dockerfile</b></td><td>The recipe that builds an image (base OS → install deps → copy code → run)</td></tr>
+    <tr><td><b>Docker Compose</b></td><td>YAML that starts many containers together with one command — local orchestration</td></tr>
+    <tr><td><b>Reverse proxy</b></td><td>A server that receives your request and forwards it to the right backend (Nginx/ALB)</td></tr>
+    <tr><td><b>Gateway / Ingress</b></td><td>The single entry point that routes URLs to services</td></tr>
+    <tr><td><b>Load balancer (ALB)</b></td><td>AWS's gateway: spreads traffic, health-checks, handles many servers</td></tr>
+    <tr><td><b>Microservice</b></td><td>One small service doing one job, deployed independently</td></tr>
+    <tr><td><b>Healthcheck</b></td><td>A periodic test ("is this alive?") so Docker/AWS know when something is broken</td></tr>
+    <tr><td><b>ECR</b></td><td>Private Docker image storage in your AWS account</td></tr>
+    <tr><td><b>ECS / Fargate</b></td><td>AWS's container runner; Fargate = no servers for you to manage</td></tr>
+    <tr><td><b>Task definition</b></td><td>The blueprint for one container on ECS (image, CPU, RAM, env vars, ports)</td></tr>
+    <tr><td><b>Service (ECS)</b></td><td>Keeps N tasks running, restarts failures, rolls out new versions</td></tr>
+    <tr><td><b>RDS</b></td><td>Managed PostgreSQL — AWS handles backups, patching, uptime</td></tr>
+    <tr><td><b>VPC / Subnet</b></td><td>Your private network in AWS; subnets are slices of it (public = internet-reachable)</td></tr>
+    <tr><td><b>Security Group</b></td><td>A firewall rule: which ports are open, and to whom</td></tr>
+    <tr><td><b>IAM Role</b></td><td>A permission set attached to services ("this task may pull from ECR")</td></tr>
+    <tr><td><b>Secrets Manager / SSM</b></td><td>Encrypted storage for passwords — injected at runtime, never in Git</td></tr>
+    <tr><td><b>Terraform</b></td><td>Code that creates/updates/destroys cloud resources — "infrastructure as code"</td></tr>
+    <tr><td><b><code>terraform plan</code></b></td><td>Preview of what Terraform would change (dry run)</td></tr>
+    <tr><td><b><code>terraform apply/destroy</code></b></td><td>Create the resources / delete them all</td></tr>
+    <tr><td><b>CI/CD</b></td><td>Automatically test (CI) and deploy (CD) every code change</td></tr>
+    <tr><td><b>Jenkins</b></td><td>An automation server that runs your pipeline (build → test → deploy)</td></tr>
+    <tr><td><b>Prometheus</b></td><td>Collects numbers (metrics) from services over time</td></tr>
+    <tr><td><b>Grafana</b></td><td>Draws charts/dashboards from Prometheus data</td></tr>
+    <tr><td><b>Smoke test</b></td><td>Quick "is it basically working?" checks right after deploying</td></tr>
+    <tr><td><b>Free tier</b></td><td>AWS's free usage limits — but <b>always destroy idle resources</b></td></tr>
+  </table>
+
+  <div class="box ok">
+    <p><b>🎓 You now have the full picture:</b> Local (Compose) for development → AWS (Terraform) for real deployment → Jenkins to automate it. Run each path once, break it on purpose once, fix it — and you'll understand every line of this project.</p>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>ZENITH — Beyond the Summit · Deployment Guide · <a href="https://github.com/Abdelrahmandaghash/Zenith-Cloud-Native" style="color:var(--accent)">GitHub Repository</a></p>
+  </div>
+</footer>
+
+</body>
+</html>

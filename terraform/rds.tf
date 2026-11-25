@@ -13,9 +13,11 @@ resource "aws_ssm_parameter" "db_password" {
 }
 
 resource "aws_ssm_parameter" "db_url" {
-  name  = "/${local.name_prefix}/db/url"
-  type  = "SecureString"
-  value = "postgresql://${var.db_username}:${random_password.db.result}@${aws_db_instance.postgres.address}:5432/${var.db_name}"
+  name = "/${local.name_prefix}/db/url"
+  type = "SecureString"
+  # urlencode() is required: the generated password may contain '#', '?' or
+  # '%', which would otherwise truncate or corrupt the connection URL.
+  value = "postgresql://${urlencode(var.db_username)}:${urlencode(random_password.db.result)}@${aws_db_instance.postgres.address}:5432/${urlencode(var.db_name)}"
 
   tags = { Name = "${local.name_prefix}-db-url" }
 }

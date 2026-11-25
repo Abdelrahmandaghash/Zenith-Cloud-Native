@@ -2,16 +2,38 @@ import os
 import time
 import uuid
 import random
+import logging
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+import db as orders_db
+
+# Without this, INFO logs from db.py are silently dropped and CloudWatch
+# never shows whether the database connected.
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    # ORDERS is defined below, but Python resolves it when the app starts,
+    # which is after this module has fully loaded.
+    orders_db.init_db(seed=ORDERS)
+    yield
+    orders_db.close()
+
+
 app = FastAPI(
     title="ZENITH Order Service",
     description="Lightweight microservice handling cart checkout and order processing.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 allowed_origins = [o.strip() for o in os.getenv("CORS_ALLOW_ORIGINS", "*").split(",") if o.strip()]
@@ -73,7 +95,9 @@ class OrderResponse(BaseModel):
     status: str
     created_at: str
 
-# ----------------- In-Memory Sample Orders -----------------
+# ----------------- Sample Orders (in-memory fallback) -----
+# Used only when DATABASE_URL is unset; db.py seeds this same list into an
+# empty PostgreSQL database on startup.
 ORDERS: List[dict] = [
     {
         "id": "ord-demo-01",
@@ -107,17 +131,28 @@ ORDERS: List[dict] = [
 # ----------------- Endpoints -----------------
 @app.get("/health", tags=["Health"])
 def health():
+    db_state = orders_db.health()
+    total = db_state["orders"]
+    if total is None:
+        total = len(ORDERS)
     return {
         "status": "healthy",
         "service": "order-service",
         "port": 8003,
-        "total_orders": len(ORDERS),
+        "database": db_state["mode"],
+        "database_connected": db_state["connected"],
+        "total_orders": total,
         "uptime_seconds": int(time.time() - START_TIME)
     }
 
 @app.get("/api/orders", tags=["Orders"])
 def get_orders():
-    return ORDERS
+    if not orders_db.enabled():
+        return ORDERS
+    try:
+        return orders_db.list_orders()
+    except orders_db.DatabaseError as exc:
+        raise HTTPException(status_code=503, detail=f"Order storage unavailable: {exc}")
 
 @app.post("/api/orders", response_model=OrderResponse, tags=["Orders"])
 def create_order(order_in: OrderCreate):
@@ -156,7 +191,13 @@ def create_order(order_in: OrderCreate):
         "created_at": now_iso
     }
 
-    ORDERS.insert(0, new_order)
+    if orders_db.enabled():
+        try:
+            orders_db.create_order(new_order)
+        except orders_db.DatabaseError as exc:
+            raise HTTPException(status_code=503, detail=f"Could not save order: {exc}")
+    else:
+        ORDERS.insert(0, new_order)
     ORDERS_CREATED_TOTAL += 1
 
     return new_order

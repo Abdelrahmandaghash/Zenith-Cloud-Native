@@ -1,36 +1,26 @@
 # ZENITH — Beyond the Summit
-### Cloud-Native Microservices E-Commerce & Mountain Expedition Platform
 
 [![Docker](https://img.shields.io/badge/Docker-24.0+-blue.svg?logo=docker&logoColor=white)](https://www.docker.com/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB.svg?logo=react&logoColor=black)](https://react.dev/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1.svg?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-E6522C.svg?logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-Observability-F46800.svg?logo=grafana&logoColor=white)](https://grafana.com/)
 [![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-D24939.svg?logo=jenkins&logoColor=white)](https://www.jenkins.io/)
-[![Terraform](https://img.shields.io/badge/Terraform-AWS%20Ready-7B42BC.svg?logo=terraform&logoColor=white)](https://www.terraform.io/)
+[![Terraform](https://img.shields.io/badge/Terraform-AWS-7B42BC.svg?logo=terraform&logoColor=white)](https://www.terraform.io/)
+
+A cloud-native microservices e-commerce and mountain expedition platform. **ZENITH** combines a **React 18** storefront with three independent **FastAPI** microservices behind an **Nginx** API gateway, backed by **PostgreSQL**, instrumented with **Prometheus + Grafana**, delivered by a **Jenkins** pipeline, and provisioned on **AWS** with **Terraform** (ECS Fargate · ALB · RDS · CloudWatch).
 
 ---
 
-## 1. What is ZENITH?
-
-**ZENITH — Beyond the Summit** is a premium outdoor adventure and high-altitude mountaineering brand. The platform is designed as an end-to-end cloud-native microservices portfolio project demonstrating production-oriented software architecture, containerization, CI/CD, and infrastructure observability.
-
-The business encompasses two main categories:
-1. **Mountaineering Equipment Store**: Death-Zone double boots, dry climbing ropes, technical ice axes, forged crampons, 4-season geodesic expedition tents, -40°C down sleeping bags, and alpine Gore-Tex hardshells.
-2. **Mountain Expeditions & Guided Summits**: World-class expeditions to iconic peaks including Mount Everest Base Camp (Nepal), Mount Kilimanjaro (Tanzania), Mont Blanc (France/Italy), Mount Elbrus (Russia), Mount Toubkal (Morocco), and Mount Sinai (Egypt).
-
----
-
-## 2. Architecture Overview & Mermaid Diagram
-
-The application uses an API Gateway pattern where all traffic enters through an **Nginx Reverse Proxy**. The frontend never communicates directly with internal microservice ports; requests are cleanly routed based on path prefixes.
+## 🏗️ Architecture
 
 ```mermaid
 flowchart TD
-    Client["Climbers & Web Browsers (Port 80)"]
-    
+    Client["Browsers (Port 80)"]
+
     subgraph Gateway ["Reverse Proxy & Ingress"]
-        Nginx["Nginx Gateway (Port 80)"]
+        Nginx["Nginx Gateway (8080 → host 80)"]
     end
 
     subgraph Microservices ["FastAPI Python Microservices"]
@@ -40,7 +30,7 @@ flowchart TD
     end
 
     subgraph FrontendApp ["Frontend Application"]
-        ReactApp["React 18 + Vite + Tailwind\n(Port 3000 / Port 80)"]
+        ReactApp["React 18 + Vite + Tailwind\n(Port 8080 → host 3000)"]
     end
 
     subgraph DataStore ["Database Layer"]
@@ -52,7 +42,7 @@ flowchart TD
         Grafana["Grafana (Port 3001)\nVisual Dashboard"]
     end
 
-    Client -->|HTTP /| Nginx
+    Client -->|HTTP| Nginx
     Nginx -->|/| ReactApp
     Nginx -->|/api/products/*| ProductSvc
     Nginx -->|/api/categories| ProductSvc
@@ -69,198 +59,284 @@ flowchart TD
 
 ---
 
-## 3. The Three Backend Microservices
+## 🧭 Architecture Overview
 
-Each microservice is an independent, lightweight FastAPI application with its own directory, Dockerfile, requirements.txt, healthcheck, and Prometheus instrumentation:
+### 1. 💻 Frontend (React 18 + Vite + Tailwind)
 
-### 1. Product Service (`services/product-service`, Port 8001)
-- **Role**: Manages the mountaineering equipment catalog, categories, search, and filtering.
-- **Endpoints**:
-  - `GET /api/products` (optional `?category=`, `?search=`)
-  - `GET /api/products/{id}`
-  - `GET /api/categories`
-  - `GET /health`
-  - `GET /metrics`
+- Single-page storefront with **Shop**, **Expeditions** and **Home** pages
+- Cart state held in context and persisted to `localStorage`
+- Talks only to the gateway — never to internal service ports
+- Falls back to bundled sample data if an API is unreachable
 
-### 2. Tour Service (`services/tour-service`, Port 8002)
-- **Role**: Manages high-altitude expeditions, mountain elevations, durations, itineraries, and guide credentials.
-- **Endpoints**:
-  - `GET /api/tours` (optional `?difficulty=`)
-  - `GET /api/tours/{id}`
-  - `GET /health`
-  - `GET /metrics`
+### 2. ⚙️ Three Backend Microservices (FastAPI)
 
-### 3. Order Service (`services/order-service`, Port 8003)
-- **Role**: Processes gear bag orders, calculates subtotals, taxes, and shipping, and records order history.
-- **Endpoints**:
-  - `POST /api/orders` (places new order, returns unique order code like `ZEN-ORD-90412`)
-  - `GET /api/orders` (lists order history)
-  - `GET /health`
-  - `GET /metrics`
-
----
-
-## 4. Port Reference Table
-
-| Service | Internal Port | Host Port | Purpose |
+| Service | Port | Role | Key endpoints |
 | :--- | :--- | :--- | :--- |
-| **Nginx API Gateway** | `8080` | `80` | Single entry point for website & APIs |
-| **Frontend UI (Direct)** | `8080` | `3000` | React Vite production container |
-| **Product Service** | `8001` | `8001` | Equipment catalog microservice |
-| **Tour Service** | `8002` | `8002` | Mountain expeditions microservice |
-| **Order Service** | `8003` | `8003` | Cart & checkout orders microservice |
-| **PostgreSQL Database** | `5432` | `5432` | Relational persistence |
-| **Prometheus** | `9090` | `9090` | Metrics scraper & timeseries DB |
-| **Grafana** | `3000` | `3001` | Monitoring dashboards (`admin` / `admin`) |
+| **product-service** | `8001` | Equipment catalog, categories, search | `GET /api/products` · `GET /api/categories` |
+| **tour-service** | `8002` | Expeditions, itineraries, guides | `GET /api/tours` · `GET /api/tours/{id}` |
+| **order-service** | `8003` | Checkout, totals, order history | `POST /api/orders` · `GET /api/orders` |
+
+Every service exposes `GET /health` and `GET /metrics` (Prometheus exposition format).
+
+### 3. 🚪 Nginx API Gateway
+
+Single entry point on port `80`. Routes by path prefix and handles CORS centrally:
+
+- `/api/products*`, `/api/categories*` → product-service
+- `/api/tours*` → tour-service
+- `/api/orders*` → order-service
+- `/` → frontend
+
+### 4. 🗄️ PostgreSQL Persistence
+
+`order-service` persists orders to **PostgreSQL 15** through `services/order-service/db.py`:
+
+- Connection pool sized for FastAPI's threadpool, idempotent schema creation, seed-on-empty
+- Driven entirely by `DATABASE_URL` — set it and orders are durable; unset and the service runs in memory
+- Returns `503` on storage failure rather than silently dropping an order
+
+### 5. 📊 Observability (Prometheus + Grafana)
+
+- Each service records request count, latency, uptime and an orders-created counter
+- Prometheus scrapes all three `/metrics` endpoints every **5 seconds**
+- Grafana auto-provisions its datasource and a **6-panel dashboard** — no manual setup
+- Metrics: `zenith_http_requests_total` · `zenith_http_request_duration_seconds` · `zenith_orders_created_total` · `zenith_service_uptime_seconds`
+
+### 6. 🔁 Jenkins CI/CD Pipeline
+
+Six stages, defined in `jenkins/Jenkinsfile`:
+
+1. **Checkout Code** — clone from GitHub
+2. **Static Checks** — Python syntax + `scripts/verify_all.py`
+3. **AWS Auth & ECR Login** — credential `aws-credentials`
+4. **Build & Push Images** — all 4 images to ECR
+5. **Deploy to ECS** — force new deployment, wait for stable
+6. **Smoke Tests** — curl the ALB endpoints, fail the build if any are down
+
+### 7. ☁️ AWS Infrastructure (Terraform)
+
+The local Compose stack is mirrored by an AWS deployment:
+
+| Local | AWS |
+| :--- | :--- |
+| Docker containers | **ECS Fargate** tasks |
+| Nginx reverse proxy | **Application Load Balancer** (HTTP :80) |
+| Local PostgreSQL | **Amazon RDS PostgreSQL** (private subnets) |
+| Local Docker images | **Amazon ECR** |
+| Container stdout | **CloudWatch Logs** |
+| Compose environment variables | **SSM Parameter Store** secrets |
+
+📄 [Terraform README →](terraform/README.md)
 
 ---
 
-## 5. Quick Start — Running with Docker Compose
+## ✅ Prerequisites
 
-Ensure Docker and Docker Compose are installed on your system.
+- AWS account with permissions for VPC, ECR, ECS, IAM, RDS, SSM and CloudWatch
+- Docker + Docker Compose, Terraform ≥ 1.6, AWS CLI v2, Python 3, Git
+- A Jenkins agent with Docker, AWS CLI, Python 3 and Git installed
 
-### Step 1: Clone and Enter the Repository
 ```bash
-git clone <your-repo-url>
-cd zenith
+git --version
+docker --version && docker compose version
+terraform version
+aws --version
+python --version
+aws configure
+aws sts get-caller-identity
 ```
 
-### Step 2: Build and Launch All Containers
+---
+
+## 📁 Project Structure
+
 ```bash
+.
+├── README.md                     # Main documentation (this file)
+├── DEPLOYMENT-GUIDE.html         # Step-by-step guide: local, AWS, Jenkins, monitoring
+├── docker-compose.yml            # Local stack: nginx + 3 services + frontend + postgres + monitoring
+├── .env.example
+│
+├── frontend/                     # React 18 + Vite + Tailwind
+│   ├── src/
+│   │   ├── components/           # Navbar, Footer, CartDrawer, modals
+│   │   ├── context/              # Cart state + localStorage
+│   │   ├── data/                 # Sample products & tours
+│   │   ├── pages/                # Home, Shop, Expeditions
+│   │   └── services/             # API client with fallback data
+│   ├── Dockerfile                # Multi-stage build, non-root Nginx runtime
+│   └── nginx.conf
+│
+├── services/                     # Three FastAPI microservices
+│   ├── product-service/          # Catalog (8001)
+│   ├── tour-service/             # Expeditions (8002)
+│   └── order-service/            # Checkout (8003)
+│       ├── main.py               # Endpoints + lifespan wiring
+│       ├── db.py                 # PostgreSQL pool, schema, CRUD
+│       └── requirements.txt
+│
+├── nginx/nginx.conf              # API gateway & reverse proxy
+│
+├── monitoring/
+│   ├── prometheus/prometheus.yml # Scrape configs for all 3 services
+│   └── grafana/
+│       ├── dashboards/           # Pre-built 6-panel dashboard
+│       └── provisioning/         # Auto datasource + dashboard loader
+│
+├── jenkins/Jenkinsfile           # 6-stage declarative pipeline
+├── scripts/                      # verify_all.py, verify_frontend.js
+│
+└── terraform/                    # AWS infrastructure as code
+    ├── vpc.tf  security.tf  ecr.tf  iam.tf
+    ├── rds.tf  alb.tf  ecs.tf  cloudwatch.tf
+    └── README.md
+```
+
+---
+
+## 🚀 Deployment
+
+Open **`DEPLOYMENT-GUIDE.html`** in a browser for the full walkthrough with screenshots-level detail. Summary below.
+
+### Path A — Run Locally with Docker Compose
+
+```bash
+git clone https://github.com/Abdelrahmandaghash/Zenith-Cloud-Native.git
+cd Zenith-Cloud-Native
+
 docker compose up --build -d
-```
-
-### Step 3: Verify Container Health
-```bash
 docker compose ps
 ```
 
-### Step 4: Access the Applications in Your Browser
-- **Main Website**: [http://localhost](http://localhost) (or [http://localhost:3000](http://localhost:3000))
-- **Equipment Store**: [http://localhost/shop](http://localhost/shop)
-- **Expeditions Catalog**: [http://localhost/expeditions](http://localhost/expeditions)
-- **Prometheus UI**: [http://localhost:9090](http://localhost:9090)
-- **Grafana Dashboard**: [http://localhost:3001](http://localhost:3001) *(Login: `admin` / `admin`)*
-- **Gateway Health**: [http://localhost/gateway-health](http://localhost/gateway-health)
+| What | URL |
+| :--- | :--- |
+| Website | http://localhost |
+| Shop | http://localhost/shop |
+| Expeditions | http://localhost/expeditions |
+| Prometheus | http://localhost:9090 |
+| Grafana | http://localhost:3001 *(admin / admin)* |
+| Gateway health | http://localhost/gateway-health |
 
-### Step 5: Stopping the Environment
 ```bash
-docker compose down
+docker compose down          # stop
+docker compose down -v       # stop and wipe database volumes
 ```
 
----
+### Path B — Deploy to AWS with Terraform
 
-## 6. How Prometheus & Grafana Monitoring Works
-
-1. **Instrumentation**: Each FastAPI microservice records every HTTP request status and latency in memory.
-2. **Scraping**: Prometheus runs on port `9090` and scrapes the `/metrics` endpoint of each service every 5 seconds.
-3. **Automated Provisioning**: Grafana automatically loads:
-   - Datasource definition (`monitoring/grafana/provisioning/datasources/datasource.yml`)
-   - Dashboard provider (`monitoring/grafana/provisioning/dashboards/dashboard.yml`)
-   - Pre-configured dashboard (`monitoring/grafana/dashboards/zenith-dashboard.json`)
-4. **Metrics Tracked**:
-   - `zenith_http_requests_total`: Total requests processed per service & status code
-   - `zenith_http_request_duration_seconds`: Average response latency
-   - `zenith_orders_created_total`: Real-time counter of orders placed through the website
-   - `zenith_service_uptime_seconds`: Running uptime of each service
-
----
-
-## 7. How Jenkins CI/CD Works
-
-The `jenkins/Jenkinsfile` defines a 6-stage declarative pipeline:
-1. **Checkout Code**: Clones the latest branch from GitHub.
-2. **Static Checks & Tests**: Verifies Python syntax and FastAPI endpoint contracts.
-3. **Build Frontend**: Compiles React TypeScript/JavaScript assets with Vite.
-4. **Build Docker Images**: Builds all 4 container images in parallel (`docker compose build`).
-5. **Deploy Local Stack**: Launches the container cluster with health-check verification (`docker compose up -d`).
-6. **Smoke Tests**: Curls the API Gateway and health endpoints to ensure zero downtime.
-
----
-
-## 8. Future AWS Deployment via Terraform
-
-A clean roadmap and Terraform HCL blueprints are prepared inside `terraform/README.md`.
-The target cloud architecture replaces local Docker Compose components with AWS managed services:
-- **Nginx Gateway** $\rightarrow$ **AWS Application Load Balancer (ALB)** with path routing rules
-- **Docker Containers** $\rightarrow$ **AWS ECS Fargate** serverless tasks
-- **Local PostgreSQL** $\rightarrow$ **Amazon RDS PostgreSQL (Multi-AZ)**
-- **Local Docker Engine** $\rightarrow$ **Amazon Elastic Container Registry (ECR)**
-- **Prometheus / Grafana** $\rightarrow$ **Amazon CloudWatch** & AWS Managed Grafana
-
----
-
-## 9. Project Directory Tree
-
-```
-zenith/
-│
-├── frontend/                     # React 18 + Vite + Tailwind CSS
-│   ├── src/
-│   │   ├── components/           # Navbar, Footer, CartDrawer, Modals
-│   │   ├── context/              # Cart state management & localStorage
-│   │   ├── data/                 # 15 climbing products & 6 mountain tours
-│   │   ├── pages/                # HomePage, ShopPage, ExpeditionsPage
-│   │   ├── services/             # API client with fallback data
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── .dockerignore
-│   ├── Dockerfile                # Multi-stage build, non-root Nginx runtime
-│   ├── nginx.conf                # Frontend SPA Nginx config
-│   ├── package.json
-│   └── vite.config.js
-│
-├── services/                     # 3 Independent FastAPI Microservices
-│   ├── product-service/          # Equipment catalog & categories (Port 8001)
-│   │   ├── .dockerignore
-│   │   ├── Dockerfile
-│   │   ├── main.py
-│   │   └── requirements.txt
-│   │
-│   ├── tour-service/             # Expeditions & itineraries (Port 8002)
-│   │   ├── .dockerignore
-│   │   ├── Dockerfile
-│   │   ├── main.py
-│   │   └── requirements.txt
-│   │
-│   └── order-service/            # Cart checkout & order records (Port 8003)
-│       ├── .dockerignore
-│       ├── Dockerfile
-│       ├── main.py
-│       └── requirements.txt
-│
-├── nginx/                        # API Gateway & Reverse Proxy
-│   └── nginx.conf
-│
-├── monitoring/                   # Observability Stack
-│   ├── prometheus/
-│   │   └── prometheus.yml        # Scrape configs for all 3 microservices
-│   └── grafana/
-│       ├── dashboards/           # Pre-built monitoring dashboard
-│       └── provisioning/         # Automated datasource & dashboard loader
-│
-├── jenkins/
-│   └── Jenkinsfile               # 6-Stage declarative CI/CD pipeline
-│
-├── terraform/
-│   └── README.md                 # Complete AWS production architecture plan
-│
-├── docker-compose.yml            # Orchestrates all 8 services
-├── .env.example
-├── .gitignore
-└── README.md
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars   # adjust as needed
+terraform init
+terraform fmt -check -recursive
+terraform validate
+terraform plan -out=tfplan
+terraform apply tfplan
+terraform output app_url
 ```
 
+Then build and push the four images:
+
+```bash
+ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+ECR="$ACCOUNT.dkr.ecr.us-east-1.amazonaws.com"
+
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin "$ECR"
+
+docker build -t "$ECR/zenith-dev-frontend:latest" ./frontend
+docker build -t "$ECR/zenith-dev-product:latest"  ./services/product-service
+docker build -t "$ECR/zenith-dev-tour:latest"     ./services/tour-service
+docker build -t "$ECR/zenith-dev-order:latest"    ./services/order-service
+
+docker push "$ECR/zenith-dev-frontend:latest"
+docker push "$ECR/zenith-dev-product:latest"
+docker push "$ECR/zenith-dev-tour:latest"
+docker push "$ECR/zenith-dev-order:latest"
+```
+
+Finally, roll the services onto the new images:
+
+```bash
+for s in frontend product tour order; do
+  aws ecs update-service --cluster zenith-dev-cluster \
+    --service "zenith-dev-$s" --force-new-deployment
+done
+```
+
+### Path C — Jenkins CI/CD
+
+1. Run the Terraform stack first — the pipeline assumes ECR, ECS and the ALB already exist.
+2. Add a Jenkins credential with ID **`aws-credentials`** (*Username with password* — username = AWS Access Key ID, password = AWS Secret Access Key).
+3. Create a *Pipeline script from SCM* job pointing at `jenkins/Jenkinsfile`.
+4. Click **Build Now** — the pipeline builds, pushes, deploys and smoke-tests.
+
 ---
 
-## 10. Interview Talking Points (Cheat Sheet)
+## ✅ Verification
 
-When discussing ZENITH during a DevOps or Full-Stack interview:
-1. **Why Microservices here?**
-   - The equipment store (high browse volume) and tour bookings (low volume, high value) have different scaling profiles. Splitting them into independent services allows scaling `product-service` without scaling `order-service`.
-2. **Why Nginx as an API Gateway?**
-   - Centralizes CORS handling, hides internal Docker network topology, and mirrors how an AWS Application Load Balancer routes traffic in production.
-3. **How does observability work?**
-   - Each FastAPI microservice exposes `/metrics` formatted in standard Prometheus exposition format. Prometheus scrapes them every 5 seconds, and Grafana visualizes request throughput, latency, and container uptime.
-4. **How is state managed?**
-   - Frontend cart items persist in `localStorage` for responsive UX. Orders are dispatched to `order-service` which can persist to PostgreSQL.
+| Layer | Command | Expected |
+| :--- | :--- | :--- |
+| Compose | `docker compose ps` | All 8 services `Up` / `healthy` |
+| Local checks | `python scripts/verify_all.py` | `All ZENITH platform components successfully verified!` |
+| Terraform | `terraform validate` | `Success! The configuration is valid.` |
+| Gateway | `curl http://localhost/health` | `healthy` |
+| Services | `curl localhost:8001/health` (and 8002, 8003) | `status: healthy` |
+| Persistence | `curl localhost:8003/health` | `"database": "postgres"` |
+| Metrics | `curl localhost:8001/metrics` | Prometheus exposition text |
+| Grafana | open http://localhost:3001 | 6-panel ZENITH dashboard |
+| AWS | `aws ecs describe-services --cluster zenith-dev-cluster --services zenith-dev-order` | `runningCount 1`, `ACTIVE` |
+| AWS app | `terraform output app_url` | `/health`, `/api/products`, `/api/tours`, `/api/orders` all `200` |
+| Jenkins | Dashboard | Pipeline green, 6 stages |
+
+---
+
+## 🔐 Security Notes
+
+| Area | Approach |
+| :--- | :--- |
+| **Secrets on AWS** | RDS password generated by Terraform, stored only in **SSM SecureString**, injected into tasks as a secret — never in code or images |
+| **Connection URL** | Percent-encoded in Terraform so special characters in the password cannot corrupt `DATABASE_URL` |
+| **Database exposure** | RDS is in **private subnets** with `publicly_accessible = false`; only the ECS security group may reach port `5432` |
+| **Containers** | All images run as a **non-root** user |
+| **IAM** | Task roles scoped per service; no `AdministratorAccess` attachment |
+| **HTTP only** | The ALB listens on port 80 — add ACM + HTTPS before handling real traffic |
+
+---
+
+## 💰 Cost Awareness & Cleanup
+
+Resources that incur charges: **ECS Fargate** tasks, **ALB**, **RDS** instance, **ECR** storage, **CloudWatch** logs.
+
+Costs are kept low by design — **no NAT Gateway**, no ACM, `db.t3.micro` single-AZ RDS, and Prometheus/Grafana are **not** deployed to AWS (they stay local).
+
+```bash
+# Tear down AWS resources
+cd terraform
+terraform destroy
+
+# Stop the local stack
+cd ..
+docker compose down -v
+```
+
+> **Always run `terraform destroy` when you are done** — Fargate tasks, the ALB and RDS bill continuously while they exist.
+
+---
+
+## 🔮 Future Improvements
+
+HTTPS with ACM · Move ECS tasks into private subnets behind VPC endpoints · AWS Managed Grafana or CloudWatch dashboards · GitHub webhook to trigger Jenkins · Trivy image scanning gate · Multi-AZ RDS with automated backups · Autoscaling policies · Frontend `package-lock.json` for reproducible builds · Scheduled stack shutdown outside working hours.
+
+---
+
+## 👨‍💻 Author
+
+**Abdelrahman Daghash**  
+Cloud DevOps Engineer
+
+## 📬 Contact
+
+- 🐙 [GitHub](https://github.com/Abdelrahmandaghash)
+- 📧 3bdelrahmandaghash@gmail.com
+- 🔗 [Project repository](https://github.com/Abdelrahmandaghash/Zenith-Cloud-Native)

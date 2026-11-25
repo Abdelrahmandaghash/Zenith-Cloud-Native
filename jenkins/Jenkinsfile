@@ -2,23 +2,35 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME     = 'zenith-platform'
-        COMPOSE_FILE = 'docker-compose.yml'
-        ENVIRONMENT  = 'local-staging'
+        AWS_REGION  = 'us-east-1'
+        PROJECT     = 'zenith'
+        ENVIRONMENT = 'dev'
+        NAME_PREFIX = "${PROJECT}-${ENVIRONMENT}"          // zenith-dev
+        CLUSTER     = "${NAME_PREFIX}-cluster"             // zenith-dev-cluster
+        // service key -> docker build context
+        FRONTEND_CONTEXT = './frontend'
+        PRODUCT_CONTEXT  = './services/product-service'
+        TOUR_CONTEXT     = './services/tour-service'
+        ORDER_CONTEXT    = './services/order-service'
     }
+
+    // Jenkins credential ID holding AWS keys (username = access key, password = secret key)
+    // Create it in Jenkins: Manage Jenkins > Credentials > New (Kind: Username with password)
+    // withCredentials below references this ID: 'aws-credentials'
 
     stages {
         stage('1. Checkout Code') {
             steps {
-                echo '=== Stage 1: Fetching latest code from repository ==='
+                echo '=== Stage 1: Fetching latest code ==='
                 checkout scm
             }
         }
 
-        stage('2. Static Checks & Tests') {
+        stage('2. Static Checks') {
             steps {
-                echo '=== Stage 2: Running backend syntax checks & verification script ==='
+                echo '=== Stage 2: Python syntax + architecture verification ==='
                 sh '''
+                    set -e
                     PYTHON_BIN=$(command -v python3 || command -v python)
                     $PYTHON_BIN -m py_compile services/product-service/main.py services/tour-service/main.py services/order-service/main.py
                     $PYTHON_BIN scripts/verify_all.py
@@ -26,59 +38,108 @@ pipeline {
             }
         }
 
-        stage('3. Build Frontend') {
+        stage('3. AWS Auth & ECR Login') {
             steps {
-                echo '=== Stage 3: Installing frontend dependencies & building React production bundle ==='
-                dir('frontend') {
+                echo '=== Stage 3: Authenticating to AWS and logging into ECR ==='
+                withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
                     sh '''
-                        if command -v npm >/dev/null 2>&1; then
-                          npm ci
-                          npm run build
-                        else
-                          echo "npm not installed on agent; skipping frontend build"
-                        fi
+                        set -e
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
+                        ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+                        echo "Logged in as account: $ACCOUNT_ID"
+                        aws ecr get-login-password --region ${AWS_REGION} \
+                          | docker login --username AWS --password-stdin ${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                        echo "$ACCOUNT_ID" > .account_id
                     '''
                 }
             }
         }
 
-        stage('4. Build Docker Images') {
+        stage('4. Build & Push Images') {
             steps {
-                echo '=== Stage 4: Building container images via Docker Compose ==='
-                sh '''
-                    docker compose build --parallel
-                '''
+                echo '=== Stage 4: Building Docker images and pushing to ECR ==='
+                withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                        set -e
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
+                        ACCOUNT_ID=$(cat .account_id)
+                        ECR="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+                        build_and_push() {
+                            name=$1
+                            context=$2
+                            repo="${ECR}/${NAME_PREFIX}-${name}"
+                            echo "--- Building ${name} from ${context} ---"
+                            docker build -t "${repo}:latest" "${context}"
+                            docker push "${repo}:latest"
+                        }
+
+                        build_and_push frontend "${FRONTEND_CONTEXT}"
+                        build_and_push product  "${PRODUCT_CONTEXT}"
+                        build_and_push tour     "${TOUR_CONTEXT}"
+                        build_and_push order    "${ORDER_CONTEXT}"
+                    '''
+                }
             }
         }
 
-        stage('5. Deploy Local Stack') {
+        stage('5. Deploy to ECS') {
             steps {
-                echo '=== Stage 5: Deploying microservices container stack ==='
-                sh '''
-                    docker compose down --remove-orphans || true
-                    docker compose up -d
-                '''
+                echo '=== Stage 5: Forcing new ECS deployment ==='
+                withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                        set -e
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
+
+                        for svc in frontend product tour order; do
+                            echo "Deploying ${NAME_PREFIX}-${svc}..."
+                            aws ecs update-service \
+                              --cluster ${CLUSTER} \
+                              --service ${NAME_PREFIX}-${svc} \
+                              --force-new-deployment > /dev/null
+                        done
+
+                        echo "Waiting for services to stabilize..."
+                        aws ecs wait services-stable \
+                          --cluster ${CLUSTER} \
+                          --services ${NAME_PREFIX}-frontend ${NAME_PREFIX}-product ${NAME_PREFIX}-tour ${NAME_PREFIX}-order
+                        echo "All ECS services are stable."
+                    '''
+                }
             }
         }
 
-        stage('6. Smoke Tests & Verification') {
+        stage('6. Smoke Tests') {
             steps {
-                echo '=== Stage 6: Running health checks against deployed microservices ==='
-                sh '''
-                    set -e
-                    sleep 10
-                    echo "Checking Gateway health..."
-                    curl -s -f http://localhost:80/gateway-health
+                echo '=== Stage 6: Hitting the ALB endpoints ==='
+                withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh '''
+                        set -e
+                        export AWS_DEFAULT_REGION=${AWS_REGION}
 
-                    echo "Checking Product Service..."
-                    curl -s -f http://localhost:8001/health
+                        ALB_DNS=$(aws elbv2 describe-load-balancers \
+                          --names ${NAME_PREFIX}-alb \
+                          --query 'LoadBalancers[0].DNSName' \
+                          --output text)
+                        APP_URL="http://${ALB_DNS}"
+                        echo "App URL: ${APP_URL}"
 
-                    echo "Checking Tour Service..."
-                    curl -s -f http://localhost:8002/health
+                        echo "Checking frontend /health..."
+                        curl -sf --retry 5 --retry-delay 5 --retry-connrefused "${APP_URL}/health"
 
-                    echo "Checking Order Service..."
-                    curl -s -f http://localhost:8003/health
-                '''
+                        echo "Checking /api/products..."
+                        curl -sf "${APP_URL}/api/products" > /dev/null
+
+                        echo "Checking /api/tours..."
+                        curl -sf "${APP_URL}/api/tours" > /dev/null
+
+                        echo "Checking /api/orders..."
+                        curl -sf "${APP_URL}/api/orders" > /dev/null
+
+                        echo "All smoke tests passed."
+                        echo "APP_URL=${APP_URL}" > app_url.txt
+                    '''
+                }
             }
         }
     }
@@ -86,10 +147,8 @@ pipeline {
     post {
         success {
             echo '=================================================='
-            echo ' ZENITH CI/CD Pipeline Succeeded!'
-            echo ' Platform accessible at: http://localhost:80'
-            echo ' Prometheus: http://localhost:9090'
-            echo ' Grafana: http://localhost:3001 (admin/admin)'
+            echo ' ZENITH AWS pipeline succeeded!'
+            echo ' Check app_url.txt in workspace or run: terraform output app_url'
             echo '=================================================='
         }
         failure {

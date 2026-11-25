@@ -108,7 +108,7 @@ terraform output app_url
 
 ## Important notes
 
-- **`order-service` is currently in-memory**. Terraform provisions RDS and injects `DATABASE_URL` into the order service, but the application code does not persist orders to Postgres yet. Add DB persistence before relying on RDS.
+- **`order-service` persists to RDS**. Terraform provisions PostgreSQL and injects `DATABASE_URL` from SSM Parameter Store; `services/order-service/db.py` creates the schema, seeds demo data and stores every order. If `DATABASE_URL` is unset the service falls back to in-memory storage, and it returns `503` if the database is unreachable.
 - **HTTP only**: no TLS. Do not use for sensitive real traffic.
 - **ECS tasks in public subnets**: this is a cost tradeoff to avoid NAT Gateway. For stricter production networking, move tasks to private subnets and add NAT Gateway or VPC endpoints.
 - **Secrets**: DB password is generated randomly and stored in SSM SecureString; do not hardcode it.
